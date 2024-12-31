@@ -124,3 +124,9 @@ def load_cow_mesh(path="data/cow_mesh.obj"):
     vertices, faces, _ = load_obj(path)
     faces = faces.verts_idx
     return vertices, faces
+
+
+def create_tetrahedron_mesh():
+    vertices = torch.tensor([[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 1, 0]], dtype=torch.float32)
+    faces = torch.tensor([[0, 1, 2], [0, 1, 3], [1, 2, 3], [0, 2, 3]], dtype=torch.int64)
+    return vertices, faces
