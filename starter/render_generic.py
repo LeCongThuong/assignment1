@@ -14,8 +14,9 @@ import mcubes
 import numpy as np
 import pytorch3d
 import torch
-
-from starter.utils import get_device, get_mesh_renderer, get_points_renderer
+import imageio
+from starter.utils import get_device, get_mesh_renderer, get_points_renderer, unproject_depth_image
+from pytorch3d.renderer.cameras import look_at_view_transform
 
 
 def load_rgbd_data(path="data/rgbd_data.pkl"):
@@ -48,6 +49,39 @@ def render_bridge(
     rend = rend.cpu().numpy()[0, ..., :3]  # (B, H, W, 4) -> (H, W, 3)
     return rend
 
+
+def render_pc(data_path="data/rgbd_data.pkl", image_size=256,   background_color=(1, 1, 1), device=None, output_gif='images/pc_vis.gif'):
+    data = load_rgbd_data(data_path)
+    if device is None:
+        device = get_device()
+
+    renderer = get_points_renderer(
+        image_size=image_size, background_color=background_color
+    )
+    rgb1, mask1, depth1, rgb2, mask2, depth2, cameras1, cameras2 = data['rgb1'], data['mask1'], data['depth1'], data['rgb2'], data['mask2'], data['depth2'], data['cameras1'], data['cameras2']
+    points_1, rgb_1 = unproject_depth_image(rgb1, mask1, depth1, cameras1)
+    points_2, rgb_2 = unproject_depth_image(rgb2, mask2, depth2, cameras2)
+    points = torch.cat([points_1, points_2], dim=0)
+    points = torch.unsqueeze(points, 0)
+    features = torch.cat([rgb_1, rgb_2], dim=0)
+    features = torch.unsqueeze(features, 0)
+    point_cloud = pytorch3d.structures.Pointclouds(points=[points], features=features)
+
+    elevation = 30.0
+    azimuth_list = np.arange(0, 360, 10)
+    distance = 6.0
+
+    images = []
+    for azimuth in azimuth_list:
+        R, T = look_at_view_transform(distance, elevation, azimuth, degrees=True)
+        cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+            R=R, T=T, fov=60, device=device
+        )
+
+        rend = renderer(point_cloud, cameras=cameras)
+        rend = rend.cpu().numpy()[0, ..., :3]
+        images.append((rend*255).astype(np.uint8))
+    imageio.mimsave(output_gif, images, fps=15)
 
 def render_sphere(image_size=256, num_samples=200, device=None):
     """
@@ -119,12 +153,13 @@ if __name__ == "__main__":
     parser.add_argument("--num_samples", type=int, default=100)
     args = parser.parse_args()
     if args.render == "point_cloud":
-        image = render_bridge(image_size=args.image_size)
+        # image = render_bridge(image_size=args.image_size)
+        render_pc(image_size=args.image_size)
     elif args.render == "parametric":
         image = render_sphere(image_size=args.image_size, num_samples=args.num_samples)
     elif args.render == "implicit":
         image = render_sphere_mesh(image_size=args.image_size)
     else:
         raise Exception("Did not understand {}".format(args.render))
-    plt.imsave(args.output_path, image)
+    # plt.imsave(args.output_path, image)
 
