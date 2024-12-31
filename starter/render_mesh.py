@@ -88,18 +88,19 @@ def render_gif_cow(
     elevation = 30.0
     azimuth_list = np.arange(0, 360, 10)
     distance = 3.0
-     # Place a point light in front of the cow.
-    lights = pytorch3d.renderer.PointLights(location=[[0, 0, -3]], device=device)
+
     images = []
     for azimuth in azimuth_list:
         R, T = look_at_view_transform(distance, elevation, azimuth, degrees=True)
         cameras = pytorch3d.renderer.FoVPerspectiveCameras(
             R=R, T=T, fov=60, device=device
         )
+        # Place a point light in front of the cow.
+        lights = pytorch3d.renderer.PointLights(location=[[0, 0, -3]], device=device)
 
         rend = renderer(mesh, cameras=cameras, lights=lights)
         rend = rend.cpu().numpy()[0, ..., :3]
-        images.append(rend)
+        images.append((rend*255).astype(np.uint8))
     imageio.mimsave(output_gif, images, fps=15)
 
 
@@ -109,6 +110,6 @@ if __name__ == "__main__":
     parser.add_argument("--output_path", type=str, default="images/cow_render.jpg")
     parser.add_argument("--image_size", type=int, default=256)
     args = parser.parse_args()
-    image = render_cow(cow_path=args.cow_path, image_size=args.image_size)
+    # image = render_cow(cow_path=args.cow_path, image_size=args.image_size)
     render_gif_cow(cow_path=args.cow_path, image_size=args.image_size, output_gif="images/cow_360.gif")
-    plt.imsave(args.output_path, image)
+    # plt.imsave(args.output_path, image)
