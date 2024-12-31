@@ -120,6 +120,46 @@ def render_sphere(image_size=256, num_samples=200, device=None):
     return rend[0, ..., :3].cpu().numpy()
 
 
+def render_torus(image_size=256, num_samples=200, device=None, output_gif='images/torus_360.gif'):
+    if device is None:
+        device = get_device()
+    renderer = get_points_renderer(image_size=image_size, device=device)
+
+    phi = torch.linspace(0, 2 * np.pi, num_samples)
+    theta = torch.linspace(0, 2 * np.pi, num_samples)
+
+    Phi, Theta = torch.meshgrid(phi, theta)
+
+    R = 1
+    r = 0.5
+    x = (R + r * torch.cos(Theta)) * torch.cos(Phi)
+    y = (R + r * torch.cos(Theta)) * torch.sin(Phi)
+    z = r * torch.sin(Theta)
+
+    points = torch.stack((x.flatten(), y.flatten(), z.flatten()), dim=1)
+    color = (points - points.min()) / (points.max() - points.min())
+
+    torus_point_cloud = pytorch3d.structures.Pointclouds(
+        points=[points], features=[color],
+    ).to(device)
+
+    elevation = 30.0
+    azimuth_list = np.arange(-180, 180, 5)
+    distance = 6.0
+
+    images = []
+    for azimuth in azimuth_list:
+        R, T = look_at_view_transform(distance, elevation, azimuth, degrees=True)
+        cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+            R=R, T=T, fov=60, device=device
+        )
+
+        rend = renderer(torus_point_cloud, cameras=cameras)
+        rend = rend.cpu().numpy()[0, ..., :3]
+        images.append((rend*255).astype(np.uint8))
+    imageio.mimsave(output_gif, images, fps=15)
+
+
 def render_sphere_mesh(image_size=256, voxel_size=64, device=None):
     if device is None:
         device = get_device()
@@ -163,7 +203,8 @@ if __name__ == "__main__":
         # image = render_bridge(image_size=args.image_size)
         render_pc(image_size=args.image_size)
     elif args.render == "parametric":
-        image = render_sphere(image_size=args.image_size, num_samples=args.num_samples)
+        # image = render_sphere(image_size=args.image_size, num_samples=args.num_samples)
+        render_torus(image_size=args.image_size, num_samples=args.num_samples)
     elif args.render == "implicit":
         image = render_sphere_mesh(image_size=args.image_size)
     else:
