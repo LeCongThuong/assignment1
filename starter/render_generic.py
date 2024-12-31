@@ -246,7 +246,8 @@ if __name__ == "__main__":
         # image = render_sphere(image_size=args.image_size, num_samples=args.num_samples)
         render_torus(image_size=args.image_size, num_samples=args.num_samples)
     elif args.render == "implicit":
-        image = render_sphere_mesh(image_size=args.image_size)
+        # image = render_sphere_mesh(image_size=args.image_size)
+        render_torus_mesh(image_size=args.image_size)
     else:
         raise Exception("Did not understand {}".format(args.render))
     # plt.imsave(args.output_path, image)
