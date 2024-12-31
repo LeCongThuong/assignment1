@@ -18,7 +18,7 @@ from starter.utils import get_device, get_mesh_renderer, load_cow_mesh
 
 
 def render_cow(
-    cow_path="data/cow.obj", image_size=256, color=[0.7, 0.7, 1], device=None,
+    cow_path="data/cow.obj", image_size=256, color=[0.7, 0.7, 1], device=None, retexture=True
 ):
     # The device tells us whether we are rendering with GPU or CPU. The rendering will
     # be *much* faster if you have a CUDA-enabled NVIDIA GPU. However, your code will
@@ -37,6 +37,13 @@ def render_cow(
     faces = faces.unsqueeze(0)  # (N_f, 3) -> (1, N_f, 3)
     textures = torch.ones_like(vertices)  # (1, N_v, 3)
     textures = textures * torch.tensor(color)  # (1, N_v, 3)
+    if retexture:
+        color1 = [0, 0, 1]
+        color2 = [1, 0, 0]
+        z_min, z_max = vertices[:, :, 2].min(), vertices[:, :, 2].max()
+        alpha = (vertices[:, 2] - z_min) / (z_max - z_min)
+        textures = torch.tensor(color1) * (1 - alpha) + torch.tensor(color2) * alpha
+        
     mesh = pytorch3d.structures.Meshes(
         verts=vertices,
         faces=faces,
