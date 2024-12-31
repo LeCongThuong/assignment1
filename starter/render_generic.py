@@ -187,6 +187,46 @@ def render_sphere_mesh(image_size=256, voxel_size=64, device=None):
     return rend[0, ..., :3].detach().cpu().numpy().clip(0, 1)
 
 
+def render_torus_mesh(image_size=256, voxel_size=64, device=None):
+    if device is None:
+        device = get_device()
+    min_value = -1.1
+    max_value = 1.1
+    X, Y, Z = torch.meshgrid([torch.linspace(min_value, max_value, voxel_size)] * 3)
+    R = 1
+    r = 0.5
+    voxels = (R - (X ** 2 + Y ** 2) ** 0.5) ** 2 + Z ** 2 - r ** 2
+    vertices, faces = mcubes.marching_cubes(mcubes.smooth(voxels), isovalue=0)
+    vertices = torch.tensor(vertices).float()
+    faces = torch.tensor(faces.astype(int))
+    # Vertex coordinates are indexed by array position, so we need to
+    # renormalize the coordinate system.
+    vertices = (vertices / voxel_size) * (max_value - min_value) + min_value
+    textures = (vertices - vertices.min()) / (vertices.max() - vertices.min())
+    textures = pytorch3d.renderer.TexturesVertex(vertices.unsqueeze(0))
+
+    mesh = pytorch3d.structures.Meshes([vertices], [faces], textures=textures).to(
+        device
+    )
+    lights = pytorch3d.renderer.PointLights(location=[[0, 0.0, -4.0]], device=device,)
+    renderer = get_mesh_renderer(image_size=image_size, device=device)
+    elevation = 30.0
+    azimuth_list = np.arange(-180, 180, 5)
+    distance = 6.0
+
+    images = []
+    for azimuth in azimuth_list:
+        R, T = look_at_view_transform(distance, elevation, azimuth, degrees=True)
+        cameras = pytorch3d.renderer.FoVPerspectiveCameras(
+            R=R, T=T, fov=60, device=device
+        )
+
+        rend = renderer(mesh, cameras=cameras, lights=lights)
+        rend = rend.cpu().numpy()[0, ..., :3]
+        images.append((rend*255).astype(np.uint8))
+    imageio.mimsave('images/torus_mesh_360.gif', images, fps=15)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
