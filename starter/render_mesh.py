@@ -41,8 +41,8 @@ def render_cow(
         color1 = [0, 0, 1]
         color2 = [1, 0, 0]
         z_min, z_max = vertices[:, :, 2].min(), vertices[:, :, 2].max()
-        alpha = (vertices[:, 2] - z_min) / (z_max - z_min)
-        textures = torch.tensor(color1) * (1 - alpha) + torch.tensor(color2) * alpha
+        alpha = (vertices[:, :, 2:] - z_min) / (z_max - z_min)
+        textures = torch.tensor(color1).view((1, 3)) * (1 - alpha) + torch.tensor(color2).view(1, 3) * alpha
         
     mesh = pytorch3d.structures.Meshes(
         verts=vertices,
@@ -65,7 +65,7 @@ def render_cow(
     return rend
 
 def render_gif_cow(
-    cow_path="data/cow.obj", image_size=256, color=[0.7, 0.7, 1], device=None, output_gif="images/cow_360.gif"
+    cow_path="data/cow.obj", image_size=256, color=[0.7, 0.7, 1], device=None, output_gif="images/cow_360.gif", retexture=True
 ):
     # The device tells us whether we are rendering with GPU or CPU. The rendering will
     # be *much* faster if you have a CUDA-enabled NVIDIA GPU. However, your code will
@@ -84,6 +84,12 @@ def render_gif_cow(
     faces = faces.unsqueeze(0)  # (N_f, 3) -> (1, N_f, 3)
     textures = torch.ones_like(vertices)  # (1, N_v, 3)
     textures = textures * torch.tensor(color)  # (1, N_v, 3)
+    if retexture:
+        color1 = [0, 0, 1]
+        color2 = [1, 0, 0]
+        z_min, z_max = vertices[:, :, 2].min(), vertices[:, :, 2].max()
+        alpha = (vertices[:, :, 2:] - z_min) / (z_max - z_min)
+        textures = torch.tensor(color1).view((1, 3)) * (1 - alpha) + torch.tensor(color2).view(1, 3) * alpha
     mesh = pytorch3d.structures.Meshes(
         verts=vertices,
         faces=faces,
@@ -154,10 +160,10 @@ def render_gif_tetrahedron(image_size=256, color=[0.7, 0.7, 1], device=None, out
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--cow_path", type=str, default="data/cow.obj")
-    parser.add_argument("--output_path", type=str, default="images/cow_render.jpg")
+    parser.add_argument("--output_path", type=str, default="images/cow_color_render.jpg")
     parser.add_argument("--image_size", type=int, default=256)
     args = parser.parse_args()
     image = render_cow(cow_path=args.cow_path, image_size=args.image_size)
-    render_gif_cow(cow_path=args.cow_path, image_size=args.image_size, output_gif="images/cow_360.gif")
-    render_gif_tetrahedron(image_size=args.image_size, output_gif="images/tetraheron_360.gif")
+    render_gif_cow(cow_path=args.cow_path, image_size=args.image_size, output_gif="images/cow_color_360.gif")
+    # render_gif_tetrahedron(image_size=args.image_size, output_gif="images/tetraheron_360.gif")
     plt.imsave(args.output_path, image)
