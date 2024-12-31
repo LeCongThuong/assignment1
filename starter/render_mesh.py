@@ -110,6 +110,6 @@ if __name__ == "__main__":
     parser.add_argument("--output_path", type=str, default="images/cow_render.jpg")
     parser.add_argument("--image_size", type=int, default=256)
     args = parser.parse_args()
-    # image = render_cow(cow_path=args.cow_path, image_size=args.image_size)
+    image = render_cow(cow_path=args.cow_path, image_size=args.image_size)
     render_gif_cow(cow_path=args.cow_path, image_size=args.image_size, output_gif="images/cow_360.gif")
-    # plt.imsave(args.output_path, image)
+    plt.imsave(args.output_path, image)
