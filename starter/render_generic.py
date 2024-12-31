@@ -58,22 +58,29 @@ def render_pc(data_path="data/rgbd_data.pkl", image_size=256,   background_color
     renderer = get_points_renderer(
         image_size=image_size, background_color=background_color
     )
-    rgb1, mask1, depth1, rgb2, mask2, depth2, cameras1, cameras2 = data['rgb1'], data['mask1'], data['depth1'], data['rgb2'], data['mask2'], data['depth2'], data['cameras1'], data['cameras2']
+    rgb1, mask1, depth1, rgb2, mask2, depth2, cameras1, cameras2 = torch.tensor(data['rgb1']).to(device=device), torch.tensor(data['mask1']), torch.tensor(data['depth1']), torch.tensor(data['rgb2']).to(device=device), torch.tensor(data['mask2']), torch.tensor(data['depth2']), data['cameras1'], data['cameras2']
+    print(rgb1.shape, type(rgb1), mask1.shape, type(mask1))
     points_1, rgb_1 = unproject_depth_image(rgb1, mask1, depth1, cameras1)
+    points_1 = points_1.to(device=device)
+    rgb_1 = rgb_1.to(device=device)
     points_2, rgb_2 = unproject_depth_image(rgb2, mask2, depth2, cameras2)
+    points_2 = points_2.to(device=device)
+    rgb_2 = rgb_2.to(device=device)
+    
     points = torch.cat([points_1, points_2], dim=0)
     points = torch.unsqueeze(points, 0)
     features = torch.cat([rgb_1, rgb_2], dim=0)
     features = torch.unsqueeze(features, 0)
-    point_cloud = pytorch3d.structures.Pointclouds(points=[points], features=features)
+    point_cloud = pytorch3d.structures.Pointclouds(points=points, features=features)
 
     elevation = 30.0
-    azimuth_list = np.arange(0, 360, 10)
+    azimuth_list = np.arange(-180, 180, 5)
     distance = 6.0
 
     images = []
     for azimuth in azimuth_list:
         R, T = look_at_view_transform(distance, elevation, azimuth, degrees=True)
+        R = pytorch3d.transforms.euler_angles_to_matrix(torch.Tensor([0, 0, np.pi]), "XYZ") @ R
         cameras = pytorch3d.renderer.FoVPerspectiveCameras(
             R=R, T=T, fov=60, device=device
         )
