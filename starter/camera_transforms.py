@@ -44,5 +44,6 @@ if __name__ == "__main__":
     parser.add_argument("--image_size", type=int, default=256)
     parser.add_argument("--output_path", type=str, default="images/transform_cow.jpg")
     args = parser.parse_args()
-
-    plt.imsave(args.output_path, render_cow(cow_path=args.cow_path, image_size=args.image_size))
+    R_relative = pytorch3d.transforms.euler_angles_to_matrix(torch.Tensor([0, -np.pi/2, 0]), "XYZ") 
+    T_relative =[3, 0, 3]
+    plt.imsave(args.output_path, render_cow(cow_path=args.cow_path, image_size=args.image_size, T_relative=T_relative))
